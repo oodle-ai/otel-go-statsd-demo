@@ -44,8 +44,6 @@ func main() {
 		port = "6767"
 	}
 
-	statsdClient.Gauge("num_customers", int64(numCustomers), 1.0)
-	statsdClient.Gauge("num_operations", int64(numOperations), 1.0)
 	go runClient(port)
 
 	http.HandleFunc("/", handleRequest)
