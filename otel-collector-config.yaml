@@ -1,0 +1,52 @@
+receivers:
+  prometheus:
+    config:
+      scrape_configs:
+        # Scrape otel collector's own telemetry, https://opentelemetry.io/docs/collector/internal-telemetry/
+        - job_name: 'otelcol'
+          scrape_interval: 30s
+          static_configs:
+            - targets: ['0.0.0.0:8888']
+  statsd:
+    endpoint: 0.0.0.0:8125
+    aggregation_interval: 60s
+    enable_metric_type: false
+    timer_histogram_mapping:
+      - statsd_type: "histogram"
+        observer_type: "summary"
+      - statsd_type: "timer"
+        observer_type: "histogram"
+        histogram:
+          max_size: 100
+
+processors:
+  batch:
+
+exporters:
+  logging:
+  otlphttp/oodle:
+    metrics_endpoint: ${env:OODLE_OTEL_METRICS_ENDPOINT}
+    headers:
+      X-API-KEY: ${env:OODLE_API_KEY}
+  prometheusremotewrite/oodle:
+    endpoint: ${env:OODLE_PROMETHEUS_ENDPOINT}
+    resource_to_telemetry_conversion:
+      enabled: true
+    headers:
+      X-API-KEY: ${env:OODLE_API_KEY}
+
+service:
+  pipelines:
+    metrics/collector:
+      receivers: [prometheus]
+      processors: [batch]
+      exporters: [logging, prometheusremotewrite/oodle]
+    metrics/statsd:
+      receivers: [statsd]
+      processors: [batch]
+      exporters: [logging, otlphttp/oodle]
+  telemetry:
+    logs:
+      level: debug
+    metrics:
+      address: 0.0.0.0:8888
